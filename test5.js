@@ -1,106 +1,100 @@
-// invoice.js
-class Invoice {
-    constructor(id, date, amount, description) {
-      this.id = id;
-      this.date = date;
-      this.amount = amount;
-      this.description = description;
-    }
-  }
-  
-  module.exports = Invoice;
+// scrivere i test
+describe('Input validation tests', () => {
+    // funzioni da implementare dopo il test
+    // funzioni da importare/exportare in seguito
+    const validateName = (name) => {
+        if (name.length < 3) return "Il nome deve essere lungo almeno 3 caratteri";
+        // null significa che la validazione e passata
+        return null; 
+    };
 
-// invoiceManager.js
-const Invoice = require("./invoice");
+    const validateEmail = (email) => {
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        if (!emailRegex.test(email)) return "Lemail non e valida";
+        // null significa che la validazione e passata
+        return null;
+    };
 
-class InvoiceManager {
-  constructor() {
-    this.invoices = [];
-  }
+    const validateParticipants = (participants) => {
+        participants = parseInt(participants, 10);
+        if (isNaN(participants) || participants <= 0 || participants > 10) {
+            return "Il numero di partecipanti deve essere tra 1 e 10";
+        }
+        // null significa che la validazione e passata
+        return null;
+    };
 
-  // Create
-  addInvoice(date, amount, description) {
-    const id = this.invoices.length + 1;
-    const invoice = new Invoice(id, date, amount, description);
-    this.invoices.push(invoice);
-    return invoice;
-  }
+    test('Name validation', () => {
+        expect(validateName('Al')).toBe("Il nome deve essere lungo almeno 3 caratteri.");
+        expect(validateName('Alex')).toBeNull();
+    });
 
-  // Read
-  getInvoice(id) {
-    return this.invoices.find((invoice) => invoice.id === id);
-  }
+    test('Email validation', () => {
+        expect(validateEmail('invalid.email')).toBe("Lemail non e valida.");
+        expect(validateEmail('valid@email.com')).toBeNull();
+    });
 
-  // Update
-  updateInvoice(id, date, amount, description) {
-    const index = this.invoices.findIndex((invoice) => invoice.id === id);
-    if (index !== -1) {
-      this.invoices[index] = new Invoice(id, date, amount, description);
-      return this.invoices[index];
-    }
-    return null;
-  }
+    test('Participants validation', () => {
+        expect(validateParticipants('0')).toBe("Il numero di partecipanti deve essere tra 1 e 10.");
+        expect(validateParticipants('11')).toBe("Il numero di partecipanti deve essere tra 1 e 10.");
+        expect(validateParticipants('5')).toBeNull();
+    });
 
-  // Delete
-  deleteInvoice(id) {
-    const index = this.invoices.findIndex((invoice) => invoice.id === id);
-    if (index !== -1) {
-      return this.invoices.splice(index, 1)[0];
-    }
-    return null;
-  }
+    test('Multiple validation errors', () => {
+        const errors = {
+            name: validateName('Al'),
+            email: validateEmail('invalid.email'),
+            participants: validateParticipants('11')
+        };
+        expect(errors.name).not.toBeNull();
+        expect(errors.email).not.toBeNull();
+        expect(errors.participants).not.toBeNull();
+    });
+});
 
-  // Get all invoices
-  getAllInvoices() {
-    return this.invoices;
-  }
-}
+/////////////////////////////////
+/////////////////////////////////
+// integration test 
 
-module.exports = InvoiceManager;
+// import delle funzioni create precedentemente
+import { validateName, validateEmail, validateParticipants } from './validation';
 
-// invoiceManager.test.js
-const InvoiceManager = require("./invoiceManager");
+describe('Integration Tests', () => {
+    let mockAPI;
 
-describe("InvoiceManager", () => {
-  let manager;
+    // il mock della funzione API
+    beforeEach(() => {
+        mockAPI = jest.fn(); 
+    });
 
-  beforeEach(() => {
-    manager = new InvoiceManager();
-  });
+    test('Form submission with valid data', () => {
+        const formData = { name: 'Fabio', email: 'fabio@example.com', participants: '3' };
+        const errors = {
+            name: validateName(formData.name),
+            email: validateEmail(formData.email),
+            participants: validateParticipants(formData.participants)
+        };
 
-  test("addInvoice should add a new invoice", () => {
-    const invoice = manager.addInvoice("2025-01-01", 100, "Test Invoice");
-    expect(invoice.id).toBe(1);
-    expect(invoice.date).toBe("2025-01-01");
-    expect(invoice.amount).toBe(100);
-    expect(invoice.description).toBe("Test Invoice");
-  });
+        if (Object.values(errors).every(error => error === null)) {
+            // simulazione dellinvio del form
+            mockAPI(formData); 
+            expect(mockAPI).toHaveBeenCalledWith(formData);
+        } else {
+            expect(mockAPI).not.toHaveBeenCalled();
+        }
+    });
 
-  test("getInvoice should return the correct invoice", () => {
-    manager.addInvoice("2025-01-01", 100, "Test Invoice");
-    const invoice = manager.getInvoice(1);
-    expect(invoice.id).toBe(1);
-  });
+    test('Form submission with invalid data shows errors', () => {
+        const formData = { name: 'Xx', email: 'invalid.email', participants: '11' };
+        const errors = {
+            name: validateName(formData.name),
+            email: validateEmail(formData.email),
+            participants: validateParticipants(formData.participants)
+        };
 
-  test("updateInvoice should update an existing invoice", () => {
-    manager.addInvoice("2025-01-01", 100, "Test Invoice");
-    const updatedInvoice = manager.updateInvoice(1, "2025-01-02", 200, "Updated Invoice");
-    expect(updatedInvoice.id).toBe(1);
-    expect(updatedInvoice.date).toBe("2025-01-02");
-    expect(updatedInvoice.amount).toBe(200);
-    expect(updatedInvoice.description).toBe("Updated Invoice");
-  });
-
-  test("deleteInvoice should delete the correct invoice", () => {
-    manager.addInvoice("2025-01-01", 100, "Test Invoice");
-    const deletedInvoice = manager.deleteInvoice(1);
-    expect(deletedInvoice.id).toBe(1);
-    expect(manager.getAllInvoices().length).toBe(0);
-  });
-
-  test("getAllInvoices should return all invoices", () => {
-    manager.addInvoice("2025-01-01", 100, "Test Invoice");
-    manager.addInvoice("2025-01-02", 200, "Another Invoice");
-    expect(manager.getAllInvoices().length).toBe(2);
-  });
+        expect(errors.name).not.toBeNull();
+        expect(errors.email).not.toBeNull();
+        expect(errors.participants).not.toBeNull();
+        expect(mockAPI).not.toHaveBeenCalled();
+    });
 });
